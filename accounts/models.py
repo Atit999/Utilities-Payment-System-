@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from datetime import timedelta
+import random
 
 
 class User(AbstractUser):
@@ -38,6 +39,7 @@ class OTP(models.Model):
     code = models.CharField(max_length=6)
     is_used = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
 
     class Meta:
         indexes = [
@@ -54,3 +56,15 @@ class OTP(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.code}"
+    @classmethod
+    def generate_otp(cls, user):
+        code = f"{random.randint(0, 999999):06d}"
+
+        # invalidate old OTPs
+        cls.objects.filter(user=user, is_used=False).update(is_used=True)
+
+        otp = cls.objects.create(user=user, code=code)
+
+        print(f"OTP for {user.email}: {code}")  # 🔥 for testing
+
+        return otp

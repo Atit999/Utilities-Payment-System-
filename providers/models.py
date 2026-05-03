@@ -23,7 +23,7 @@ class Service(models.Model):
 
     name = models.CharField(max_length=100)  # Electricity, Prepaid, etc.
     code = models.CharField(max_length=50)
-    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    price = models.PositiveIntegerField(default=0)
 
     is_active = models.BooleanField(default=True)
 

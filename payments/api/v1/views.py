@@ -42,6 +42,8 @@ class PayBillView(APIView):
                 amount=bill.amount,
                 status=PaymentStatus.SUCCESS,  # simulate success
                 txn_id=str(uuid.uuid4())
+                
+
             )
 
             # update bill

@@ -25,16 +25,49 @@ class ProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_at"]
 
 
+# -------------------------
+# VERIFY OTP
+# -------------------------
 class OTPVerifySerializer(serializers.Serializer):
     email = serializers.EmailField()
-    code  = serializers.CharField(max_length=6)
+    code = serializers.CharField(max_length=6)
 
+    def validate(self, data):
+        try:
+            user = User.objects.get(email=data["email"])
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User not found")
+
+        otp = OTP.objects.filter(
+            user=user,
+            code=data["code"],
+            is_used=False
+        ).order_by("-created_at").first()
+
+        if not otp:
+            raise serializers.ValidationError("Invalid OTP")
+
+        if not otp.is_valid:
+            raise serializers.ValidationError("OTP expired")
+
+        # mark used
+        otp.is_used = True
+        otp.save()
+
+        user.is_verified = True
+        user.save()
+
+        data["user"] = user
+        return data
+
+
+# -------------------------
+# RESEND OTP
+# -------------------------
+class ResendOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
 
 
 class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField(help_text="User email address")
-    password = serializers.CharField(
-        write_only=True,
-        style={"input_type": "password"},
-        help_text="User password"
-    )
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)

@@ -178,4 +178,6 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=0, minute=0),  # every day
     },
 }
-
+KHALTI_SECRET_KEY = "9f0112a03ffa484bae531d24028f739f"
+KHALTI_INIT_URL = "https://dev.khalti.com/api/v2/epayment/initiate/"
+KHALTI_VERIFY_URL = "https://dev.khalti.com/api/v2/epayment/lookup/"

@@ -2,7 +2,7 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 
 from accounts.models import Profile, OTP
 from .serializers import (
@@ -10,7 +10,10 @@ from .serializers import (
     ProfileSerializer,
     OTPVerifySerializer,
     LoginSerializer,
+    ResendOTPSerializer,
 )
+
+User = get_user_model()
 
 
 # -------------------------
@@ -34,14 +37,12 @@ class RegisterView(generics.CreateAPIView):
     def perform_create(self, serializer):
         user = serializer.save()
 
-        # create profile
         Profile.objects.create(
             user=user,
             full_name=self.request.data.get("full_name", "")
         )
 
-        # generate OTP
-        OTP.generate_otp(user)   # 👈 no duplication
+        OTP.generate_otp(user)
 
 
 # -------------------------
@@ -52,9 +53,47 @@ class VerifyOTPView(generics.GenericAPIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        user = self.get_serializer().validate_and_get_user(request.data)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data["user"]
 
         return Response(jwt(user))
+
+
+# -------------------------
+# RESEND OTP (Swagger input ready)
+# -------------------------
+class ResendOTPView(generics.GenericAPIView):
+    serializer_class = ResendOTPSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if user.is_verified:
+            return Response(
+                {"detail": "User already verified"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        OTP.generate_otp(user)
+
+        return Response(
+            {"detail": "OTP sent successfully"},
+            status=status.HTTP_200_OK
+        )
 
 
 # -------------------------
